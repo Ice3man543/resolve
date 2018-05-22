@@ -11,9 +11,11 @@ package main
 import (
     "bufio"
     "crypto/rand"
+    "encoding/json"
     "flag"
     "fmt"
     "io"
+    "io/ioutil"
     "os"
     "reflect"
     "strings"
@@ -36,6 +38,8 @@ type Job struct {
     Result string
 }
 
+var AquatoneOutput []*Job
+
 var (
     Threads       int    // Number of threads to use
     Domain        string // Name of domains
@@ -43,7 +47,34 @@ var (
     output        string // Output file to write to
     comResolvers  string // Comma separated resolvers
     listResolvers string // List of resolvers to use
+    aquatone      bool
 )
+
+// Writes subdomains output to a json file
+func WriteOutputAquatoneJSON(subdomains []*Job) error {
+    m := make(map[string]string)
+    _, err := os.Create(output)
+
+    if err != nil {
+        return err
+    }
+
+    for _, job := range subdomains {
+        // Set correct values
+        m[job.Work] = job.Result
+    }
+
+    fmt.Printf("%v", m)
+    data, err := json.MarshalIndent(m, "", "    ")
+    if err != nil {
+        return err
+    }
+
+    // Write the output to file
+    err = ioutil.WriteFile(output, data, 0644)
+
+    return nil
+}
 
 // Resolve a host using dns_resolver lib
 func ResolveHost(host string) (ips []string, err error) {
@@ -148,7 +179,11 @@ func analyze(results <-chan *Job) {
     for job := range results {
         if job.Result != "" {
             fmt.Printf("\n[+] %s : %s", job.Work, job.Result)
-	    ValidSubs = append(ValidSubs, job.Work)
+            if aquatone == true {
+                AquatoneOutput = append(AquatoneOutput, job)
+            } else {
+                ValidSubs = append(ValidSubs, job.Work)
+            }
         }
     }
 }
@@ -213,7 +248,7 @@ func main() {
     flag.StringVar(&list, "l", "", "File to resolve subdomains from")
     flag.StringVar(&comResolvers, "r", "", "Comma-separated list of resolvers to use")
     flag.StringVar(&listResolvers, "rL", "", "File containing list of resolvers to use")
-
+    flag.BoolVar(&aquatone, "aO", false, "Write output in aquatone format")
     flag.Parse()
 
     if list == "" {
@@ -298,18 +333,21 @@ func main() {
     wg2.Wait()
 
     file, err := os.OpenFile(output, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-     if err != nil {
-          return 
-     }
+    if err != nil {
+        return
+    }
 
-     defer file.Close()
+    defer file.Close()
+    if aquatone == true {
+        WriteOutputAquatoneJSON(AquatoneOutput)
+    } else {
+        for _, subdomain := range ValidSubs {
+            _, err := io.WriteString(file, subdomain+"\n")
+            if err != nil {
+                return
+            }
+        }
+    }
 
-     for _, subdomain := range ValidSubs {
-          _, err := io.WriteString(file, subdomain+"\n")
-          if err != nil {
-               return
-          }
-     }
-
-     return
+    return
 }
