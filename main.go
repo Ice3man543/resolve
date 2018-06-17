@@ -1,5 +1,5 @@
 //
-// resolver : A simple dns resolving tool
+// resolver.go : A simple dns resolving tool with json output
 // Written By : @ice3man (Nizamul Rana)
 //
 // Distributed Under MIT License
@@ -261,9 +261,9 @@ func main() {
         os.Exit(1)
     }
 
-    fmt.Printf("[#] Resolve : Subdomains Cleaning tool")
-    fmt.Printf("\n[#] Written By : @ice3man")
-    fmt.Printf("\n[#] Github : github.com/ice3man543")
+    fmt.Printf("[-] resolve : Subdomains Resolving tool in golang")
+    fmt.Printf("\n[-] Written By : @ice3man")
+    fmt.Printf("\n[-] Github : github.com/Ice3man543")
 
     if comResolvers != "" {
         // Load the Resolvers from list
